@@ -1,0 +1,72 @@
+# GreenMind Configuration File
+
+# Logging Configuration
+logging:
+  level: INFO
+  format: json
+  directory: logs
+  max_file_size_mb: 100
+  backup_count: 5
+
+# Vector Database Configuration
+vector_db:
+  type: faiss
+  dimension: 384
+  index_type: IVF
+  nprobe: 10
+  chunk_size: 500
+  overlap: 100
+
+# LLM Configuration
+llm:
+  provider: google
+  model: gemini-pro
+  temperature: 0.7
+  max_tokens: 2048
+  timeout: 30
+
+# Tools Configuration
+tools:
+  web_search:
+    enabled: true
+    timeout: 10
+    results_per_query: 5
+    cache_duration: 3600
+  
+  pollution_index:
+    enabled: true
+    update_frequency: 3600
+    cache_duration: 1800
+    supported_regions:
+      - worldwide
+  
+  carbon_calculator:
+    enabled: true
+    calculation_methods:
+      - transport
+      - energy
+      - food
+
+# Embedding Configuration
+embeddings:
+  model: sentence-transformers/all-MiniLM-L6-v2
+  dimension: 384
+  batch_size: 32
+
+# Data Paths
+data:
+  policies_directory: data/environmental_policies
+  effects_directory: data/environmental_effects
+  vector_db_path: vector_db/faiss_index
+
+# API Configuration
+api:
+  google_genai:
+    required: true
+    rate_limit: 60
+    unit: minute
+  
+  serpapi:
+    required: false
+    rate_limit: 100
+    unit: month
