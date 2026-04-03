@@ -107,19 +107,19 @@ CapstoneProject/
 
 6. **Initialize Vector Database**
    ```bash
-   python -m src.rag.vector_db --initialize
+   python init_vector_db.py
    ```
 
 7. **Run Application**
    ```bash
-   streamlit run src/ui/streamlit_app.py
+   streamlit run streamlit_app.py
    ```
 
 ## Usage
 
 ### Starting the Application
 ```bash
-streamlit run src/ui/streamlit_app.py
+streamlit run streamlit_app.py
 ```
 
 The application will:
@@ -173,6 +173,22 @@ Log format: `greenmind_[date]_[time].log`
 
 2. **Optional - SerpAPI** - For web search
    - Get from: https://serpapi.com
+
+## Deploy Public URL (Streamlit Community Cloud)
+
+1. Push this repository to GitHub (already done).
+2. Go to https://share.streamlit.io and sign in with GitHub.
+3. Click **New app** and choose:
+   - Repository: `testerlakshmis-droid/greenmind-agentic-rag`
+   - Branch: `main`
+   - Main file path: `streamlit_app.py`
+4. In **Advanced settings** add secrets:
+   - `GOOGLE_API_KEY = "your_key"`
+   - `SERPAPI_API_KEY = "your_key"` (optional)
+5. Click **Deploy**.
+
+After deployment, Streamlit will provide a public URL like:
+`https://your-app-name.streamlit.app`
 
 ## Performance Optimization
 
