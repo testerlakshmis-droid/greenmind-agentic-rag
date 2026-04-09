@@ -1,5 +1,6 @@
 """Streamlit entrypoint for public deployment on Streamlit Community Cloud."""
 
+import os
 import streamlit as st
 
 from src.agent.green_agent import GreenMindAgent
@@ -15,7 +16,15 @@ st.title("GreenMind")
 st.caption("Agentic RAG for environmental policies, effects, and pollution insights")
 
 if "agent" not in st.session_state:
-    st.session_state.agent = GreenMindAgent()
+    try:
+        api_key = st.secrets.get("GOOGLE_API_KEY", os.getenv("GOOGLE_API_KEY", ""))
+        if api_key:
+            os.environ["GOOGLE_API_KEY"] = api_key
+        st.session_state.agent = GreenMindAgent(genai_api_key=api_key)
+    except Exception as e:
+        st.error(f"Initialization failed: {e}")
+        st.info("Add GOOGLE_API_KEY in Streamlit app Settings -> Secrets, then reboot the app.")
+        st.stop()
 
 if "history" not in st.session_state:
     st.session_state.history = []

@@ -2,6 +2,7 @@
 
 import uuid
 import time
+import os
 from typing import Dict, Any, List, Tuple
 from datetime import datetime
 import logging
@@ -27,11 +28,16 @@ class GreenMindAgent:
     Main GreenMind Agent - orchestrates RAG tools and external tools
     """
     
-    def __init__(self, genai_api_key: str = GOOGLE_API_KEY):
+    def __init__(self, genai_api_key: str | None = None):
         """Initialize GreenMind Agent with all tools"""
         
         self.session_id = str(uuid.uuid4())
-        self.genai_api_key = genai_api_key
+        self.genai_api_key = (genai_api_key or os.getenv("GOOGLE_API_KEY") or GOOGLE_API_KEY).strip()
+
+        if not self.genai_api_key:
+            raise ValueError(
+                "GOOGLE_API_KEY is missing. Configure it in Streamlit Secrets or environment variables."
+            )
         
         # Initialize LLM
         self.llm = ChatGoogleGenerativeAI(
