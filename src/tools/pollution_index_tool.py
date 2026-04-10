@@ -223,6 +223,15 @@ class PollutionIndexTool:
             Formatted air quality report
         """
         
+        # Validate input
+        if not location or not isinstance(location, str):
+            return "Error: Location must be a non-empty string."
+        
+        # Limit location length to prevent abuse
+        max_location_length = 200
+        if len(location) > max_location_length:
+            location = location[:max_location_length]
+        
         # Normalize location input by removing punctuation and extra spaces
         location_clean = re.sub(r"[^A-Za-z\s,]", "", location or "").strip()
         if not location_clean:

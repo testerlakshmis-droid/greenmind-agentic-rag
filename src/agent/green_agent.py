@@ -80,8 +80,42 @@ class GreenMindAgent:
         start_time = time.time()
         
         try:
+            # Validate and sanitize input
+            if not isinstance(user_message, str):
+                user_message = str(user_message)
+            
+            user_message = user_message.strip()
+            if not user_message:
+                return {
+                    "answer": "Please enter a non-empty question.",
+                    "session_id": self.session_id,
+                    "tools_used": [],
+                    "processing_time_ms": int((time.time() - start_time) * 1000)
+                }
+            
+            # Limit query length to prevent abuse
+            max_query_length = 5000
+            if len(user_message) > max_query_length:
+                user_message = user_message[:max_query_length]
+                logger.logger.warning(f"Query truncated to {max_query_length} chars")
+            
             # Log the query
             logger.log_query(user_message, self.session_id)
+            
+            # Check greeting FIRST — before the environmental topic filter
+            # so "hello"/"hi" always gets a welcome response with a quote
+            if self._is_greeting(user_message):
+                quote = self._get_environmental_quote()
+                response_text = self._generate_greeting_response(quote)
+                processing_time = int((time.time() - start_time) * 1000)
+                response = {
+                    "answer": response_text,
+                    "session_id": self.session_id,
+                    "tools_used": [],
+                    "processing_time_ms": processing_time
+                }
+                logger.log_response(response_text, self.session_id, processing_time)
+                return response
             
             # Check if query is environment-related
             is_environmental = self._is_environmental_query(user_message)
@@ -96,26 +130,21 @@ class GreenMindAgent:
                 logger.log_response(response["answer"], self.session_id, response["processing_time_ms"])
                 return response
             
-            # Greeting with environmental quote
-            if self._is_greeting(user_message):
-                quote = self._get_environmental_quote()
-                response_text = self._generate_greeting_response(quote)
-            else:
-                # Determine which tools to use
-                tools_to_use = self._determine_tools(user_message)
-                
-                # Gather information from tools
-                tool_results = self._execute_tools(tools_to_use, user_message)
-                
-                # Generate response using LLM
-                response_text = self._generate_response(user_message, tool_results)
+            # Determine which tools to use
+            tools_to_use = self._determine_tools(user_message)
+            
+            # Gather information from tools
+            tool_results = self._execute_tools(tools_to_use, user_message)
+            
+            # Generate response using LLM
+            response_text = self._generate_response(user_message, tool_results)
             
             processing_time = int((time.time() - start_time) * 1000)
             
             response = {
                 "answer": response_text,
                 "session_id": self.session_id,
-                "tools_used": list(tool_results.keys()) if not self._is_greeting(user_message) else [],
+                "tools_used": list(tool_results.keys()),
                 "processing_time_ms": processing_time
             }
             
@@ -135,6 +164,9 @@ class GreenMindAgent:
     def _is_environmental_query(self, query: str) -> bool:
         """Check if query is about environmental topics"""
         
+        if not query or not isinstance(query, str):
+            return False
+        
         environmental_keywords = [
             "environment", "climate", "carbon", "pollution", "renewable",
             "sustainability", "green", "energy", "ecology", "ecosystem",
@@ -144,17 +176,23 @@ class GreenMindAgent:
             "carbon footprint", "climate change", "global warming"
         ]
         
-        query_lower = query.lower()
-        
-        # Check if any environmental keyword is in the query
-        for keyword in environmental_keywords:
-            if keyword in query_lower:
-                return True
-        
-        return False
+        try:
+            query_lower = query.lower().strip()
+            
+            # Check if any environmental keyword is in the query
+            for keyword in environmental_keywords:
+                if keyword in query_lower:
+                    return True
+            
+            return False
+        except (AttributeError, TypeError):
+            return False
     
     def _is_greeting(self, query: str) -> bool:
         """Check if query is a greeting"""
+        
+        if not query or not isinstance(query, str):
+            return False
         
         greetings = ["hello", "hi", "hey", "greetings", "good morning", 
                     "good afternoon", "good evening", "how are you"]

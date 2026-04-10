@@ -1,6 +1,7 @@
 """Streamlit entrypoint for public deployment on Streamlit Community Cloud."""
 
 import os
+import random
 import streamlit as st
 
 from src.agent.green_agent import GreenMindAgent
@@ -12,8 +13,25 @@ st.set_page_config(
     layout="wide",
 )
 
-st.title("GreenMind")
+st.title("GreenMind 🌍")
 st.caption("Agentic RAG for environmental policies, effects, and pollution insights")
+
+# ── Welcome quote (shown once per session on page load) ──────────────────────
+_QUOTES = [
+    "In every walk with nature, one receives far more than he seeks. — John Muir",
+    "The environment is where we all meet; where all have a mutual interest. — Lady Bird Johnson",
+    "The greatest threat to our planet is the belief that someone else will save it. — Robert Swan",
+    "We do not inherit the earth from our ancestors; we borrow it from our children. — Native American Proverb",
+    "The Earth does not belong to us; we belong to the Earth. — Chief Seattle",
+    "The future will either be green or not at all. — Bob Brown",
+    "What we do to the Earth, we do to ourselves. — Chief Seattle",
+]
+
+if "welcome_quote" not in st.session_state:
+    st.session_state.welcome_quote = random.choice(_QUOTES)
+
+st.info(f'💬 *"{st.session_state.welcome_quote}"*')
+st.markdown("---")
 
 if "agent" not in st.session_state:
     try:

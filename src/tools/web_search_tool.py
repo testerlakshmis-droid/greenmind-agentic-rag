@@ -28,16 +28,43 @@ class WebSearchTool:
             Formatted search results
         """
         
-        # If SerpAPI key is available, use it
+        # Validate inputs
+        if not query or not isinstance(query, str):
+            return "Error: Search query must be a non-empty string."
+        
+        query = query.strip()
+        if not query:
+            return "Error: Search query cannot be empty."
+        
+        # Limit query length to prevent abuse
+        max_query_length = 500
+        if len(query) > max_query_length:
+            query = query[:max_query_length]
+        
+        # Validate num_results
+        try:
+            num_results = int(num_results)
+            if num_results < 1:
+                num_results = 5
+            elif num_results > 20:
+                num_results = 20
+        except (ValueError, TypeError):
+            num_results = 5
+        
+        # If SerpAPI key is available, use it with fallback on failure
         if self.serpapi_key:
-            return self._serpapi_search(query, num_results)
+            try:
+                return self._serpapi_search(query, num_results)
+            except Exception as e:
+                logger.error(f"SerpAPI search failed: {e}, falling back to simulated search")
+                return self._simulated_search(query)
         
         # Fallback: return simulated results with real environmental information
         logger.info("SerpAPI key not configured, using simulated search results")
         return self._simulated_search(query)
     
     def _serpapi_search(self, query: str, num_results: int) -> str:
-        """Search using SerpAPI"""
+        """Search using SerpAPI with error handling"""
         try:
             url = "https://serpapi.com/search"
             params = {
@@ -50,25 +77,43 @@ class WebSearchTool:
             response = requests.get(url, params=params, timeout=10)
             
             if response.status_code == 200:
-                results = response.json()
+                try:
+                    results = response.json()
+                except ValueError:
+                    logger.error("Failed to parse SerpAPI response JSON")
+                    return "Error: Invalid response format from search API."
                 
                 # Format organic results
                 formatted_results = []
-                if 'organic_results' in results:
+                if 'organic_results' in results and isinstance(results['organic_results'], list):
                     for result in results['organic_results'][:num_results]:
-                        formatted_results.append({
-                            'title': result.get('title', ''),
-                            'link': result.get('link', ''),
-                            'snippet': result.get('snippet', '')
-                        })
+                        if isinstance(result, dict):
+                            formatted_results.append({
+                                'title': str(result.get('title', ''))[:500],
+                                'link': str(result.get('link', ''))[:1000],
+                                'snippet': str(result.get('snippet', ''))[:1000]
+                            })
+                
+                if not formatted_results:
+                    return "No search results found."
                 
                 return self._format_results(formatted_results)
+            elif response.status_code == 401:
+                return "Error: Invalid SerpAPI key."
+            elif response.status_code == 429:
+                return "Error: Search rate limit exceeded. Please try again later."
             else:
                 return f"Search failed with status code: {response.status_code}"
         
+        except requests.Timeout:
+            logger.error("Web search timeout")
+            return "Error: Search request timed out. Please try again."
+        except requests.ConnectionError:
+            logger.error("Web search connection error")
+            return "Error: Cannot connect to search service."
         except Exception as e:
             logger.error(f"Web search error: {e}")
-            return f"Error during web search: {str(e)}"
+            return f"Error during web search: {str(e)[:200]}"
     
     def _simulated_search(self, query: str) -> str:
         """Simulated search results for demonstration"""

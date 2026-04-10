@@ -50,7 +50,22 @@ class CarbonCalculatorTool:
             Calculation result dictionary
         """
         
-        mode_lower = mode.lower()
+        # Validate inputs
+        if not mode or not isinstance(mode, str):
+            return {"error": "Transport mode must be a non-empty string"}
+        
+        try:
+            distance_km = float(distance_km)
+        except (ValueError, TypeError):
+            return {"error": "Distance must be a valid number"}
+        
+        # Validate distance bounds
+        if distance_km < 0:
+            return {"error": "Distance cannot be negative"}
+        if distance_km > 1_000_000:
+            return {"error": "Distance exceeds reasonable limit (1,000,000 km)"}
+        
+        mode_lower = mode.lower().strip()
         
         if mode_lower not in self.emission_factors["transport"]:
             return {
@@ -81,7 +96,22 @@ class CarbonCalculatorTool:
             Calculation result dictionary
         """
         
-        energy_lower = energy_type.lower()
+        # Validate inputs
+        if not energy_type or not isinstance(energy_type, str):
+            return {"error": "Energy type must be a non-empty string"}
+        
+        try:
+            consumption = float(consumption)
+        except (ValueError, TypeError):
+            return {"error": "Consumption must be a valid number"}
+        
+        # Validate consumption bounds
+        if consumption < 0:
+            return {"error": "Consumption cannot be negative"}
+        if consumption > 10_000_000:
+            return {"error": "Consumption exceeds reasonable limit (10,000,000 units)"}
+        
+        energy_lower = energy_type.lower().strip()
         
         if energy_lower not in self.emission_factors["energy"]:
             return {
@@ -114,7 +144,22 @@ class CarbonCalculatorTool:
             Calculation result dictionary
         """
         
-        food_lower = food_type.lower()
+        # Validate inputs
+        if not food_type or not isinstance(food_type, str):
+            return {"error": "Food type must be a non-empty string"}
+        
+        try:
+            quantity_kg = float(quantity_kg)
+        except (ValueError, TypeError):
+            return {"error": "Quantity must be a valid number"}
+        
+        # Validate quantity bounds
+        if quantity_kg < 0:
+            return {"error": "Quantity cannot be negative"}
+        if quantity_kg > 100_000:
+            return {"error": "Quantity exceeds reasonable limit (100,000 kg)"}
+        
+        food_lower = food_type.lower().strip()
         
         if food_lower not in self.emission_factors["food"]:
             return {
@@ -147,32 +192,47 @@ class CarbonCalculatorTool:
             Daily footprint summary
         """
         
+        if not isinstance(params, dict):
+            return {"error": "Parameters must be provided as a dictionary"}
+        
         total_emissions = 0
         breakdown = {}
         
+        def _safe_float(val, default=0.0):
+            """Safely convert param values to non-negative floats."""
+            try:
+                result = float(val)
+                return max(0.0, result)
+            except (ValueError, TypeError):
+                return default
+        
         # Transport
-        if "car_km" in params and params["car_km"] > 0:
-            result = self.calculate_transport_emissions("car", params["car_km"])
+        car_km = _safe_float(params.get("car_km", 0))
+        if car_km > 0:
+            result = self.calculate_transport_emissions("car", car_km)
             if "error" not in result:
                 breakdown["car"] = result["total_emissions_kg"]
                 total_emissions += result["total_emissions_kg"]
         
-        if "public_transport_km" in params and params["public_transport_km"] > 0:
-            result = self.calculate_transport_emissions("bus", params["public_transport_km"])
+        pub_km = _safe_float(params.get("public_transport_km", 0))
+        if pub_km > 0:
+            result = self.calculate_transport_emissions("bus", pub_km)
             if "error" not in result:
                 breakdown["public_transport"] = result["total_emissions_kg"]
                 total_emissions += result["total_emissions_kg"]
         
         # Energy
-        if "electricity_kwh" in params and params["electricity_kwh"] > 0:
-            result = self.calculate_energy_emissions("electricity", params["electricity_kwh"])
+        elec_kwh = _safe_float(params.get("electricity_kwh", 0))
+        if elec_kwh > 0:
+            result = self.calculate_energy_emissions("electricity", elec_kwh)
             if "error" not in result:
                 breakdown["electricity"] = result["total_emissions_kg"]
                 total_emissions += result["total_emissions_kg"]
         
         # Food
-        if "meat_kg" in params and params["meat_kg"] > 0:
-            result = self.calculate_food_emissions("beef", params["meat_kg"])
+        meat_kg = _safe_float(params.get("meat_kg", 0))
+        if meat_kg > 0:
+            result = self.calculate_food_emissions("beef", meat_kg)
             if "error" not in result:
                 breakdown["meat"] = result["total_emissions_kg"]
                 total_emissions += result["total_emissions_kg"]
@@ -194,6 +254,14 @@ class CarbonCalculatorTool:
         Returns:
             Personalized reduction advice
         """
+        
+        try:
+            emissions_kg = float(emissions_kg)
+        except (ValueError, TypeError):
+            return "Error: emissions_kg must be a valid number."
+        
+        if emissions_kg < 0:
+            return "Error: emissions_kg cannot be negative."
         
         advice = "Carbon Footprint Reduction Advice:\n\n"
         

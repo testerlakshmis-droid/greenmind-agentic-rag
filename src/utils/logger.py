@@ -11,7 +11,12 @@ class GreenMindLogger:
     
     def __init__(self, log_dir="logs"):
         self.log_dir = Path(log_dir)
-        self.log_dir.mkdir(exist_ok=True)
+        
+        try:
+            self.log_dir.mkdir(exist_ok=True, parents=True)
+        except OSError as e:
+            print(f"Warning: Cannot create log directory {log_dir}: {e}")
+            self.log_dir = Path(".")  # Fallback to current directory
         
         # Create session log file
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -21,9 +26,16 @@ class GreenMindLogger:
         self.logger = logging.getLogger("GreenMind")
         self.logger.setLevel(logging.INFO)
         
-        # File handler
-        file_handler = logging.FileHandler(self.log_file)
-        file_handler.setLevel(logging.INFO)
+        # Clear existing handlers to avoid duplicate log entries
+        self.logger.handlers.clear()
+        
+        # File handler with error handling
+        file_handler = None
+        try:
+            file_handler = logging.FileHandler(self.log_file)
+            file_handler.setLevel(logging.INFO)
+        except (OSError, IOError) as e:
+            print(f"Warning: Cannot create log file, using console only: {e}")
         
         # Console handler
         console_handler = logging.StreamHandler()
@@ -34,38 +46,57 @@ class GreenMindLogger:
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
             datefmt='%Y-%m-%d %H:%M:%S'
         )
-        file_handler.setFormatter(formatter)
-        console_handler.setFormatter(formatter)
         
-        self.logger.addHandler(file_handler)
+        if file_handler:
+            file_handler.setFormatter(formatter)
+            self.logger.addHandler(file_handler)
+        
+        console_handler.setFormatter(formatter)
         self.logger.addHandler(console_handler)
         
-        # Structured logs (JSON format)
+        # Structured logs (JSON format) with size limit to prevent unbounded memory growth
         self.structured_logs = []
+        self.max_logs = 10000
     
     def log_query(self, query, session_id):
-        """Log user query"""
-        log_entry = {
-            "timestamp": datetime.now().isoformat(),
-            "type": "query",
-            "content": query,
-            "session_id": session_id
-        }
-        self.structured_logs.append(log_entry)
-        self.logger.info(f"Query: {query}")
+        """Log user query with validation"""
+        try:
+            if not query:
+                return
+            query_str = str(query)[:2000]
+            log_entry = {
+                "timestamp": datetime.now().isoformat(),
+                "type": "query",
+                "content": query_str,
+                "session_id": str(session_id)[:100]
+            }
+            if len(self.structured_logs) < self.max_logs:
+                self.structured_logs.append(log_entry)
+            self.logger.info(f"Query: {query_str[:200]}")
+        except Exception as e:
+            self.logger.error(f"Error logging query: {e}")
     
     def log_tool_usage(self, tool_name, tool_input, tool_output, session_id):
-        """Log tool usage with input and output"""
-        log_entry = {
-            "timestamp": datetime.now().isoformat(),
-            "type": "tool_usage",
-            "tool_name": tool_name,
-            "input": tool_input,
-            "output": tool_output[:500] if isinstance(tool_output, str) else str(tool_output)[:500],
-            "session_id": session_id
-        }
-        self.structured_logs.append(log_entry)
-        self.logger.info(f"Tool: {tool_name} | Input: {tool_input}")
+        """Log tool usage with input and output, with validation"""
+        try:
+            if not tool_name:
+                return
+            tool_name_str = str(tool_name)[:100]
+            input_str = str(tool_input)[:500]
+            output_str = str(tool_output)[:800] if tool_output else "No output"
+            log_entry = {
+                "timestamp": datetime.now().isoformat(),
+                "type": "tool_usage",
+                "tool_name": tool_name_str,
+                "input": input_str,
+                "output": output_str,
+                "session_id": str(session_id)[:100]
+            }
+            if len(self.structured_logs) < self.max_logs:
+                self.structured_logs.append(log_entry)
+            self.logger.info(f"Tool: {tool_name_str} | Input: {input_str[:100]}")
+        except Exception as e:
+            self.logger.error(f"Error logging tool usage: {e}")
     
     def log_rag_retrieval(self, query, retrieved_docs, source, session_id):
         """Log RAG retrieval"""
@@ -105,10 +136,16 @@ class GreenMindLogger:
         self.logger.error(f"Error ({error_type}): {error_message}")
     
     def save_structured_logs(self):
-        """Save structured logs to JSON file"""
-        json_log_file = self.log_dir / f"{self.log_file.stem}_structured.json"
-        with open(json_log_file, 'w') as f:
-            json.dump(self.structured_logs, f, indent=2)
+        """Save structured logs to JSON file with error handling"""
+        try:
+            json_log_file = self.log_dir / f"{self.log_file.stem}_structured.json"
+            with open(json_log_file, 'w') as f:
+                json.dump(self.structured_logs, f, indent=2, default=str)
+            self.logger.info(f"Structured logs saved to {json_log_file}")
+        except (OSError, IOError) as e:
+            self.logger.error(f"Cannot save structured logs: {e}")
+        except Exception as e:
+            self.logger.error(f"Error serializing structured logs: {e}")
     
     def get_session_summary(self, session_id):
         """Get summary of activities in a session"""
