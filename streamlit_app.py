@@ -16,23 +16,6 @@ st.set_page_config(
 st.title("GreenMind 🌍")
 st.caption("Agentic RAG for environmental policies, effects, and pollution insights")
 
-# ── Welcome quote (shown once per session on page load) ──────────────────────
-_QUOTES = [
-    "In every walk with nature, one receives far more than he seeks. — John Muir",
-    "The environment is where we all meet; where all have a mutual interest. — Lady Bird Johnson",
-    "The greatest threat to our planet is the belief that someone else will save it. — Robert Swan",
-    "We do not inherit the earth from our ancestors; we borrow it from our children. — Native American Proverb",
-    "The Earth does not belong to us; we belong to the Earth. — Chief Seattle",
-    "The future will either be green or not at all. — Bob Brown",
-    "What we do to the Earth, we do to ourselves. — Chief Seattle",
-]
-
-if "welcome_quote" not in st.session_state:
-    st.session_state.welcome_quote = random.choice(_QUOTES)
-
-st.info(f'💬 *"{st.session_state.welcome_quote}"*')
-st.markdown("---")
-
 if "agent" not in st.session_state:
     try:
         api_key = st.secrets.get("GOOGLE_API_KEY", os.getenv("GOOGLE_API_KEY", ""))
@@ -47,6 +30,50 @@ if "agent" not in st.session_state:
 if "history" not in st.session_state:
     st.session_state.history = []
 
+# ── Daily eco-quote — rendered once, above the search box ────────────────────
+_QUOTES = [
+    ("In every walk with nature, one receives far more than he seeks.", "John Muir"),
+    ("The environment is where we all meet; where all have a mutual interest.", "Lady Bird Johnson"),
+    ("The greatest threat to our planet is the belief that someone else will save it.", "Robert Swan"),
+    ("We do not inherit the earth from our ancestors; we borrow it from our children.", "Native American Proverb"),
+    ("The Earth does not belong to us; we belong to the Earth.", "Chief Seattle"),
+    ("The future will either be green or not at all.", "Bob Brown"),
+    ("What we do to the Earth, we do to ourselves.", "Chief Seattle"),
+]
+
+if "welcome_quote" not in st.session_state:
+    st.session_state.welcome_quote = random.choice(_QUOTES)
+
+_q_text, _q_author = st.session_state.welcome_quote
+st.markdown(
+    f"""
+    <div style="
+        background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%);
+        border-left: 6px solid #74c69d;
+        border-radius: 10px;
+        padding: 20px 28px;
+        margin-bottom: 22px;
+    ">
+        <p style="
+            font-size: 1.15rem;
+            font-style: italic;
+            color: #d8f3dc;
+            margin: 0 0 10px 0;
+            line-height: 1.6;
+        ">❝ {_q_text} ❞</p>
+        <p style="
+            font-size: 0.9rem;
+            color: #95d5b2;
+            margin: 0;
+            text-align: right;
+            font-weight: 600;
+        ">— {_q_author}</p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+# ── Search form ───────────────────────────────────────────────────────────────
 with st.form("query_form", clear_on_submit=False):
     user_query = st.text_area(
         "Ask about environmental topics",
